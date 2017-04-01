@@ -19,22 +19,26 @@ using std::pair;
 using std::set;
 
 typedef vector<pair<string, int> > dict;
-typedef map<string, set<int> > index;
+typedef map<string, set<int> > myindex;
 
 class Dict
 {
 public:
-	Dict(const string &dictEnPath, const string &dictCnPath);
+	dict &get_dict();
+	myindex &get_index();
+//	Dict(const string &dictEnPath, const string &dictCnPath);
 
-	dict get_dict();
-	index get_index();
-
+	static Dict* getDict(const string& dictEnPath, const string& dictCnPath);
 private:
-	index _mapIndex;
+	myindex _mapIndex;
 	dict _vecDict;
+
+	Dict(const string &dictEnPath, const string &dictCnPath);
 
 	void init(const string &dictEnPath, const string &dictCnPath);
 	void store_index();
+
+	static Dict* _pDict;
 };
 
 #endif

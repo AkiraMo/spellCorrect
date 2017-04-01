@@ -19,13 +19,15 @@ using std::shared_ptr;
 using std::string;
 
 class TcpConnection;
+class EpollPoller;
+class SpellCorrectServer;
 typedef shared_ptr<TcpConnection> TcpConnectionPtr;
 typedef std::function<void(const TcpConnectionPtr&)> TcpConnectionCallback;
 
 class TcpConnection:private Noncopyable,public std::enable_shared_from_this<TcpConnection>
 {
 public:
-	explicit TcpConnection(int socket);
+	explicit TcpConnection(int socket, EpollPoller* p);
 	~TcpConnection();
 
 	void shutdown();
@@ -35,6 +37,7 @@ public:
 	ssize_t readline(char* usrbuf, size_t maxlen);
 	string recv();
 	void send(const string &msg);
+	void sendInLoop(const string & s);
 
 	void setConnectionCallback(TcpConnectionCallback cb);
 	void setMessageCallback(TcpConnectionCallback cb);
@@ -55,6 +58,9 @@ private:
 	const Inetaddress _localAdd;
 	const Inetaddress _peerAdd;
 	bool _isShutdownWrite;
+
+	EpollPoller* _pEpollPoller;
+
 	TcpConnectionCallback _onConnectionCb;
 	TcpConnectionCallback _onMessageCb;
 	TcpConnectionCallback _onCloseCb;

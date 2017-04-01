@@ -6,6 +6,10 @@
 
 #include "../inc/Thread.h"
 
+#include <iostream>
+using std::cout;
+using std::endl;
+
 Thread::Thread():_pthId(0), _isRun(false){}
 
 void Thread::start()
@@ -19,23 +23,26 @@ void Thread::join()
 	if(_isRun)
 	{
 		pthread_join(_pthId, NULL);
-		_pthId = false;
+		_isRun = false;
 	}
 }
 
 void* Thread::threadFunc(void* arg)
 {
 	Thread* p = static_cast<Thread*>(arg);
-	if(p)
+	while(true)
 	{
-		p->run();
+		if(p)
+		{
+			p->run();
+		}
 	}
 	return NULL;
 }
 
 Thread::~Thread()
 {
-	if(_isRun)
+	if(!_isRun)
 	{
 		pthread_detach(_pthId);
 	}

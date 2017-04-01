@@ -19,18 +19,29 @@ using std::endl;
 using std::ifstream;
 using std::istringstream;
 
+Dict* Dict::_pDict = NULL;
+
+Dict* Dict::getDict(const string& dictEnPath, const string& dictCnPath)
+{
+	if(!_pDict)
+	{
+		_pDict = new Dict(dictEnPath, dictCnPath);
+	}
+	return _pDict;
+}
+
 Dict::Dict(const string &dictEnPath, const string &dictCnPath)
 {
 	init(dictEnPath,dictCnPath);
 	store_index();
 }
 
-dict Dict::get_dict()
+dict &Dict::get_dict()
 {
 	return _vecDict;
 }
 
-index Dict::get_index()
+myindex &Dict::get_index()
 {
 	return _mapIndex;
 }
@@ -39,7 +50,6 @@ void Dict::init(const string &dictEnPath, const string &dictCnPath)
 {
 	//生成dict
 	string cntmp = dictCnPath;//报错太烦了，先写着，八百年以后再写真的处理吧
-
 	ifstream ifse(dictEnPath);
 	if(!ifse.good())
 	{
@@ -82,7 +92,7 @@ void Dict::init(const string &dictEnPath, const string &dictCnPath)
 		for(i = 0; i <= (int)tmp.size(); ++i)
 		{
 			cur = tmp[i];
-			index::iterator itMapEn = _mapIndex.find(cur);
+			myindex::iterator itMapEn = _mapIndex.find(cur);
 			if(itMapEn != _mapIndex.end())
 			{
 				itMapEn->second.insert(pos);

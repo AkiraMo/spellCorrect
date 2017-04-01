@@ -7,6 +7,7 @@
 #include "../inc/SocketIO.h"
 #include "../inc/Mylog.h"
 
+#include <string.h>
 #include <unistd.h>
 #include <errno.h>
 #include <sys/socket.h>
@@ -19,14 +20,13 @@ SocketIO::SocketIO(int socketfd):_socketFd(socketfd){}
         
 ssize_t SocketIO::readn(char* buf, size_t cnt)
 {
-	size_t nleft = cnt;
-	ssize_t nread;
 	char* pBuf = buf;
-
-	while(nleft > 0)
+	size_t total = 0;
+	int pos;
+	while(total < cnt)
 	{
-		nread = ::read(_socketFd, pBuf, nleft);
-		if(-1 == nread)
+		pos = ::recv(_socketFd, pBuf + total, cnt - total, 0);
+		if(-1 == pos)
 		{
 			if(EINTR == errno)
 			{
@@ -34,39 +34,34 @@ ssize_t SocketIO::readn(char* buf, size_t cnt)
 			}
 			return -1;
 		}
-		else if(0 == nread)
+		else if(0 == pos)
 		{
 			break;
 		}
-
-		nleft -= nread;
-		pBuf += nread;
+		total += pos;
 	}
-	return (cnt - nleft);
+	return total;
 }
 
 ssize_t SocketIO::writen(const char* buf, size_t cnt)
 {
-	size_t nleft = cnt;
-	ssize_t nwrite;
 	const char* pBuf = buf;
-
-	while(nleft > 0)
+	size_t total = 0;
+	int pos;
+	while(total < cnt)
 	{
-		nwrite = ::write(_socketFd, pBuf, nleft);
-		if(nwrite <= 0)
+		pos = ::send(_socketFd, pBuf + total, cnt - total, 0);
+		if(pos <= 0)
 		{
-			if(-1 == nwrite && EINTR == errno)
+			if(-1 == pos && EINTR == errno)
 			{
 				continue;
 			}
 			return -1;
 		}
-
-		nleft -= nwrite;
-		pBuf += nwrite;
+		total += pos;
 	}
-	return cnt;
+	return total -= pos;
 }
 
 ssize_t SocketIO::readline(char* usrbuf, size_t maxlen)
@@ -96,7 +91,8 @@ ssize_t SocketIO::readline(char* usrbuf, size_t maxlen)
 				}
 				pBuf += nsize;
 				total += nsize;
-				*pBuf = 0;
+				//*pBuf = 0;
+				memset(pBuf, 0, sizeof(pBuf));
 				return total;
 			}
 		}
@@ -109,7 +105,8 @@ ssize_t SocketIO::readline(char* usrbuf, size_t maxlen)
 		total += nread;
 		nleft -= nread;
 	}
-	*pBuf = 0;
+	//*pBuf = 0;
+	memset(pBuf, 0, sizeof(pBuf));
 	return maxlen - 1;
 }
 

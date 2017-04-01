@@ -33,3 +33,23 @@ TcpServer::TcpServer(const string &ip, unsigned short port)
 	_sockfd.bind(_addr);
 	_sockfd.listen();
 }
+
+void TcpServer::start()
+{
+	_poller.loop();
+}
+
+void TcpServer::setConnectCallback(TcpServerCallback cb)
+{
+	_poller.setConnectCallback(std::move(cb));
+}
+    
+void TcpServer::setMessageCallback(TcpServerCallback cb)
+{
+	_poller.setMessageCallback(std::move(cb));
+}
+
+void TcpServer::setCloseCallback(TcpServerCallback cb)
+{
+	_poller.setCloseCallback(std::move(cb));
+}

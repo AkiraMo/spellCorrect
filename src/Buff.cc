@@ -19,19 +19,18 @@ void Buff::push(ElemType task)
 	{
 		_notFull.wait();
 	}
-	
 	_que.push(task);
 	_notEmpty.notify();
+	_mutex.unlock();
 }
 
 ElemType Buff::pop()
 {
 	MutexGuard tmp(_mutex);
-	while(empty())
+	while(_isRun && empty())
 	{
 		_notEmpty.wait();
 	}
-
 	if(_isRun)
 	{
 		ElemType ret = _que.front();
@@ -53,10 +52,10 @@ void Buff::wakeup()
 
 bool Buff::full()
 {
-	return _que.size() == _size;
+	return (_que.size() == _size);
 }
 
 bool Buff::empty()
 {
-	return _que.size() == 0;
+	return (_que.size() == 0);
 }

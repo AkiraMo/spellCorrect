@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/epoll.h>
+#include <sys/eventfd.h>
 #include <unistd.h>
 #include <errno.h>                                                                           
 #include <assert.h>
@@ -20,7 +21,17 @@
 using std::cout;
 using std::endl;
 
-int creatEpollFd()
+int createEventFd()
+{
+	int eventfd = ::eventfd(0, 0);
+	if(-1 == eventfd)
+	{
+		logError("createEventFd");
+	}
+	return eventfd;
+}
+
+int createEpollFd()
 {
 	int epollfd = ::epoll_create1(0);
 	if(-1 == epollfd)
@@ -95,9 +106,10 @@ bool isConnectionClose(int sockfd)
 }
 
 EpollPoller::EpollPoller(int listenfd)
-:_epollFd(creatEpollFd()), _listenFd(listenfd), _isLoop(false), _vecEvents(1024)
+:_epollFd(createEpollFd()), _listenFd(listenfd), _eventFd(createEventFd()), _isLoop(false), _vecEvents(1024)
 {
 	addEpollReadFd(_epollFd, _listenFd);
+	addEpollReadFd(_epollFd, _eventFd);
 }
 
 EpollPoller::~EpollPoller()
@@ -142,9 +154,11 @@ void EpollPoller::waitEpollFd()
 	int nready;
 	do
 	{
-		nready = ::epoll_wait(_epollFd, &(*_vecEvents.begin()), static_cast<int>(_vecEvents.size()), 5000);
-	}
-	while(-1 == nready && EINTR == errno);
+		nready = ::epoll_wait(_epollFd,
+							  &*_vecEvents.begin(),
+							  static_cast<int>(_vecEvents.size()),
+							  5000);
+	}while(-1 == nready && EINTR == errno);
 
 	if(-1 == nready)
 	{
@@ -161,7 +175,7 @@ void EpollPoller::waitEpollFd()
 		{
 			_vecEvents.resize(_vecEvents.size() * 2);
 		}
-
+		
 		int i;
 		for(i = 0; i != nready; ++i)
 		{
@@ -172,12 +186,14 @@ void EpollPoller::waitEpollFd()
 					handleConnection();
 				}
 			}
-			else
+			else if(_vecEvents[i].data.fd == _eventFd)
 			{
-				if(_vecEvents[i].events & EPOLLIN)
-				{
-					handleMessage(_vecEvents[i].data.fd);
-				}
+				handleRead();
+				doPendingFunc();
+			}
+			else if(_vecEvents[i].events & EPOLLIN)
+			{
+				handleMessage(_vecEvents[i].data.fd);
 			}
 		}
 	}
@@ -188,7 +204,7 @@ void EpollPoller::handleConnection()
 	int peerfd = accpetConnFd(_listenFd);
 	addEpollReadFd(_epollFd, peerfd);
 
-	TcpConnectionPtr conn(new TcpConnection(peerfd));
+	TcpConnectionPtr conn(new TcpConnection(peerfd, this));
 	conn->setConnectionCallback(_onConnectCallback);
 	conn->setMessageCallback(_onMessageCallback);
 	conn->setCloseCallback(_onCloseCallback);
@@ -213,6 +229,52 @@ void EpollPoller::handleMessage(int peerfd)
 		else
 		{
 			it->second->handleMessageCallback();
+		}
+	}
+}
+
+void EpollPoller::handleRead()
+{
+	uint64_t buf = 0;
+	int ret = ::read(_eventFd, &buf, sizeof(buf));
+	if(ret != sizeof(buf))
+	{
+		logError("read eventfd");
+	}
+}
+
+void EpollPoller::runInLoop(Function cb)
+{
+	{
+		MutexGuard tmp(_mutex);
+		_pendingFunc.push_back(cb);
+	}
+	wakeup();
+}
+
+void EpollPoller::wakeup()
+{
+	uint64_t one = 1;
+	int ret = ::write(_eventFd, &one, sizeof(one));
+	if(ret != sizeof(one))
+	{
+		logError("wakeup");
+	}
+}
+
+void EpollPoller::doPendingFunc()
+{
+	std::vector<Function> tmp;
+	{
+		MutexGuard guard(_mutex);
+		tmp.swap(_pendingFunc);
+	}
+
+	for(auto & func : tmp)
+	{
+		if(func)
+		{
+			func();
 		}
 	}
 }

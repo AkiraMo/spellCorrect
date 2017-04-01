@@ -27,15 +27,15 @@ using std::endl;
 
 Socket::Socket(int socketfd):_socketFd(socketfd){}
 	
-Socket::Socket()
-{
-	_socketFd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if(-1 == _socketFd)
-	{
-		logError("socket");
-		exit(0);
-	}
-}
+//Socket::Socket()
+//{
+//	_socketFd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+//	if(-1 == _socketFd)
+//	{
+//		logError("socket");
+//		exit(0);
+//	}
+//}
 
 Socket::~Socket()
 {
@@ -73,7 +73,7 @@ void Socket::listen()
 		exit(0);
 	}
 }
-void Socket::accept()
+int Socket::accept()
 {
 	int fd = ::accept(_socketFd, NULL, NULL);
 	if(-1 == fd)
@@ -81,6 +81,7 @@ void Socket::accept()
 		logError("accept");
 		exit(0);
 	}
+	return fd;
 }
 						    
 void Socket::shutdownWrite()
@@ -142,7 +143,7 @@ Inetaddress Socket::getPeerAdd(int peerfd)
 	struct sockaddr_in add;
 	socklen_t len = sizeof(add);
 	int ret;
-	ret = ::getsockname(peerfd, (struct sockaddr*)&add, &len);
+	ret = ::getpeername(peerfd, (struct sockaddr*)&add, &len);
 	if(-1 == ret)
 	{
 		logError("getLocalAdd");

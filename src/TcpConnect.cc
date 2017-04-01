@@ -8,17 +8,18 @@
 #include "../inc/Socket.h"
 #include "../inc/SocketIO.h"
 #include "../inc/Inetaddress.h"
+#include "../inc/EpollPoller.h"
 #include "../inc/Mylog.h"
 
 #include <iostream>
 
-#define BUFFSIZE 1024
-
 using std::cout;
 using std::endl;
 
-TcpConnection::TcpConnection(int socket)
-:_socketFd(socket), _socketIO(socket), _localAdd(Socket::getLocalAdd(socket)), _peerAdd(Socket::getPeerAdd(socket)), _isShutdownWrite(false){}
+TcpConnection::TcpConnection(int socket, EpollPoller* p)
+:_socketFd(socket), _socketIO(socket), _localAdd(Socket::getLocalAdd(socket)),
+_peerAdd(Socket::getPeerAdd(socket)), _isShutdownWrite(false), _pEpollPoller(p)
+{}
 
 TcpConnection::~TcpConnection()
 {
@@ -69,7 +70,7 @@ ssize_t TcpConnection::readline(char* usrbuf, size_t maxlen)
 
 string TcpConnection::recv()
 {
-	char buf[BUFFSIZE] = {0};
+	char buf[1024] = {0};
 	int ret = readline(buf, sizeof(buf));
 	if(0 == ret)
 	{
@@ -144,3 +145,9 @@ string TcpConnection::toString()
 			_peerAdd.toIp().c_str(),_peerAdd.toPort());
 	return text;
 }
+
+void TcpConnection::sendInLoop(const string &s)
+{
+	_pEpollPoller->runInLoop(std::bind(&TcpConnection::send, shared_from_this(), s));
+}
+

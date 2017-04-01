@@ -22,7 +22,6 @@ class Threadpool
 	friend class Workthread;
 public:
 	Threadpool(size_t threadsize, size_t buffsize);
-	~Threadpool();
 
 	void start();
 	void stop();

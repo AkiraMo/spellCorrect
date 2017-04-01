@@ -23,7 +23,7 @@ public:
 	int fd();
 	void bind(const Inetaddress &add);
 	void listen();
-	void accept();
+	int accept();
 	
 	void shutdownWrite();
 

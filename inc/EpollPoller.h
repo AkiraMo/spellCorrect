@@ -9,13 +9,17 @@
 
 #include "TcpConnection.h"
 #include "Noncopyable.h"
+#include "Mutex.h"
 
 #include <vector>
 #include <map>
 
 #include <sys/epoll.h>
 
+using std::string;
+
 typedef TcpConnectionCallback EpollCallback;
+typedef std::function<void()> Function;
 
 class EpollPoller:private Noncopyable
 {
@@ -30,14 +34,20 @@ public:
 	void setMessageCallback(EpollCallback cb);
 	void setCloseCallback(EpollCallback cb);
 
+	void runInLoop(Function cb);
+
 private:
 	void waitEpollFd();
 	void handleConnection();
 	void handleMessage(int peerfd);
+	void handleRead();
+	void wakeup();
+	void doPendingFunc();
 
 private:
 	const int _epollFd;
 	const int _listenFd;
+	const int _eventFd;
 	bool _isLoop;
 
 	typedef std::vector<struct epoll_event> EventList;
@@ -45,6 +55,9 @@ private:
 
 	typedef std::map<int, TcpConnectionPtr> ConnectionList;
 	ConnectionList _mapLists;
+
+	Mutex _mutex;
+	std::vector<Function> _pendingFunc;
 
 	EpollCallback _onConnectCallback;
 	EpollCallback _onMessageCallback;

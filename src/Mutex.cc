@@ -6,6 +6,10 @@
 
 #include "../inc/Mutex.h"
 
+#include <iostream>
+using std::cout;
+using std::endl;
+
 Mutex::Mutex():_isLock(false)
 {
 	pthread_mutex_init(&_mutex, NULL);
@@ -19,7 +23,7 @@ Mutex::~Mutex()
 void Mutex::lock()
 {
 	_isLock = true;
-	pthread_mutex_lock(&_mutex);
+	pthread_mutex_trylock(&_mutex);
 }
 
 void Mutex::unlock()
